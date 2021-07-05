@@ -1,148 +1,149 @@
-(function() {
+(function()  {
+
+    function conectarDB() {
+        const abrirConexion = window.indexedDB.open('crm', 1);
+    
+        abrirConexion.onerror = function() {
+            console.log('Error al conectarse a la base de Datos | Agregar Estudiante');
+        };
+    
+        abrirConexion.onsuccess = function() {
+            DB = abrirConexion.result;
+        }
+    }
+    
 
     let DB;
-    let idCliente;
-    const formulario = document.querySelector('#formulario');
-   
-    const nombreInput = document.querySelector('#nombre');
+    let idEstudiante;
+
+    const nombresInput = document.querySelector('#nombres');
+    const apellidosInput = document.querySelector('#apellidos');
     const emailInput = document.querySelector('#email');
-    const empresaInput = document.querySelector('#empresa');
+    const cuiInput = document.querySelector('#cui');
     const telefonoInput = document.querySelector('#telefono');
+    const encargadoInput = document.querySelector('#encargado');
+
+    const formulario = document.querySelector('#formulario');
+
 
     document.addEventListener('DOMContentLoaded', () => {
 
-
         conectarDB();
 
-        //
-        formulario.addEventListener('submit', actualizarCliente);
+        // Actualiza el registro
+        formulario.addEventListener('submit', actualizarEstudiante);
 
-
-        // Verificar si el cliente existe
+        // Verificar Id de la URL
         const parametrosURL = new URLSearchParams(window.location.search);
-        idCliente = parametrosURL.get('id');
-        if(idCliente) {
-   
-            setTimeout( () => {
-                obtenerCliente(idCliente);
+        idEstudiante = parametrosURL.get('id');
+
+
+        if(idEstudiante){
+            setTimeout(() => {
+                obtenerEstudiante(idEstudiante);
             }, 100);
         }
-
     });
 
-
-    function conectarDB() {
-        // ABRIR CONEXIÓN EN LA BD:
-
-        let abrirConexion = window.indexedDB.open('crm', 1);
-
-        // si hay un error, lanzarlo
-        abrirConexion.onerror = function() {
-            console.log('Hubo un error');
-        };
-     
-        // si todo esta bien, asignar a database el resultado
-        abrirConexion.onsuccess = function() {
-            // guardamos el resultado
-            DB = abrirConexion.result;
-        };
-    }
-
-
-    function obtenerCliente(id) {
-  
-        const transaction = DB.transaction(['crm'], 'readwrite');
-        const objectStore = transaction.objectStore('crm');
-
-        console.log(objectStore);
-
-        var request = objectStore.openCursor();
-        request.onsuccess = function(event) {
-            var cursor = event.target.result;
-            if (cursor) {
-                if(cursor.value.id  == id ) {
-                    // pasar el que estamos editando...
-                    llenarFormulario(cursor.value);
-                }
-                cursor.continue();          
-            }
-        };
-
-    }
-
-    function llenarFormulario(datosCliente) {
-        const { nombre, email, empresa, telefono } = datosCliente;
-         nombreInput.value = nombre;
-         emailInput.value = email;
-         empresaInput.value = empresa;
-         telefonoInput.value = telefono;
-    }
-
-    function actualizarCliente(e) {
+    function actualizarEstudiante(e){
         e.preventDefault();
 
-        if( nombreInput.value === '' || emailInput.value === '' || empresaInput.value === '' || telefonoInput.value === '' ) {
-            imprimirAlerta('Todos los campos son obligatorios', 'error');
+        if(nombresInput.value === '' || apellidosInput.value  === '' || emailInput.value  === '' || cuiInput.value  === '' || telefonoInput.value  === '' || encargadoInput.value  === '' ){
+            imprimirAlerta('Campos Obligatorios','error');
+
             return;
         }
 
-        // actualizar...
-        const clienteActualizado = {
-            nombre: nombreInput.value,
+        // Actualizar Estudiante
+        const estudianteActualizado = {
+            nombres: nombresInput.value,
+            apellidos: apellidosInput.value,
             email: emailInput.value,
-            empresa: empresaInput.value,
+            cui: cuiInput.value,
             telefono: telefonoInput.value,
-            id: Number( idCliente )
-        };
+            encargado: encargadoInput.value,
+            id: Number(idEstudiante)
+        }
 
-        console.log(clienteActualizado)
+        var opcion = confirm("Actualizar Datos");
+        if (opcion == false) {
+            return;
+        }
 
-
-        // actualizar...
         const transaction = DB.transaction(['crm'], 'readwrite');
         const objectStore = transaction.objectStore('crm');
 
-        objectStore.put(clienteActualizado);
+        objectStore.put(estudianteActualizado);
 
-        transaction.oncomplete = () => {
-            imprimirAlerta('Editado Correctamente');
+        transaction.oncomplete = function() {
+            alert('El estudiante: '+estudianteActualizado.nombres+' '+estudianteActualizado.apellidos+
+            '\nEmail: '+ estudianteActualizado.email+'  Telefono: '+estudianteActualizado.telefono
+            +'\nEncargado: '+estudianteActualizado.encargado+ '\n\n Fue actualizado exitosamente');
+
+            imprimirAlerta('Redirigiendo al Menu principal en 3 segundos...');
 
             setTimeout(() => {
+                
                 window.location.href = 'index.html';
             }, 3000);
         };
 
-        transaction.onerror = (error) => {
-            console.log(error);
-            console.log('Hubo un errorr.');
-        };
+        transaction.onerror = function() {
+            imprimirAlerta('Error al Actualizar', 'error');
+        }
+
+
+
+
     }
 
 
-    function imprimirAlerta(mensaje, tipo) {
-        // Crea el div
+    function obtenerEstudiante(id){
+        const transaction = DB.transaction(['crm']);
+        const objectStore = transaction.objectStore('crm');
 
-        const divMensaje = document.createElement('div');
-        divMensaje.classList.add( "px-4", "py-3", "rounded",  "max-w-lg", "mx-auto", "mt-6", "text-center" );
+        const estudiante = objectStore.openCursor();
 
-        if(tipo === 'error') {
-           divMensaje.classList.add('bg-red-100', "border-red-400", "text-red-700");
-        } else {
-            divMensaje.classList.add('bg-green-100', "border-green-400", "text-green-700");
+        estudiante.onsuccess = function(e) {
+            const cursor = e.target.result;
+
+            if(cursor){
+                if(cursor.value.id === Number(id)){
+                    llenarFormulario(cursor.value);
+
+                    const TituloEditar = document.querySelector('#TituloEditar');
+                    TituloEditar.textContent = "Editar Estudiante: "+cursor.value.nombres+" "+cursor.value.apellidos;
+                }
+
+                cursor.continue();
+            }
         }
+
+    }
+
+    function llenarFormulario(datosEstudiante){
+        const {nombres, apellidos, email, cui, telefono, encargado} = datosEstudiante;
         
-        // Mensaje de error
-        divMensaje.textContent = mensaje;
+        nombresInput.value = nombres;
+        apellidosInput.value = apellidos;
+        emailInput.value = email;
+        cuiInput.value = cui;
+        telefonoInput.value = telefono;
+        encargadoInput.value = encargado;
 
-        // Insertar en el DOM
-       formulario.appendChild(divMensaje);
+        
+    }
 
-        // Quitar el alert despues de 3 segundos
-        setTimeout( () => {
-            divMensaje.remove();
-        }, 3000);
-   }
+    function conectarDB() {
+        const abrirConexion = window.indexedDB.open('crm', 1);
 
-    
+        abrirConexion.onerror = function() {
+            console.log('Error al conectarse a la base de Datos | Editar Estudiante');
+        };
+
+        abrirConexion.onsuccess = function() {
+            DB = abrirConexion.result;
+        }
+    }
 
 })();

@@ -1,115 +1,134 @@
-(function() {
+(function(){
     let DB;
 
+    const listadoEstudiantes = document.querySelector('#listado-clientes');
+
+    
     document.addEventListener('DOMContentLoaded', () => {
         crearDB();
-    
-        if(window.indexedDB.open('crm', 1)) {
-            obtenerClientes();
+
+        if(window.indexedDB.open('crm',1)){
+            obtenerEstudiantes();
         }
-        
+
+        listadoEstudiantes.addEventListener('click', eliminarRegistro);
+
     });
-    
-    // Código de IndexedDB
-    function crearDB() {
-        // crear base de datos con la versión 1
-        const crearDB = window.indexedDB.open('crm', 1);
-    
-        // si hay un error, lanzarlo
-        crearDB.onerror = function() {
-            console.log('Hubo un error');
-        };
-    
-        // si todo esta bien, asignar a database el resultado
-        crearDB.onsuccess = function() {
-            // guardamos el resultado
-            DB = crearDB.result;
-        };
-    
-        // este método solo corre una vez
-        crearDB.onupgradeneeded = function(e) {
-            // el evento que se va a correr tomamos la base de datos
-            const db = e.target.result;
-    
-            
-            // definir el objectstore, primer parametro el nombre de la BD, segundo las opciones
-            // keypath es de donde se van a obtener los indices
-            const objectStore = db.createObjectStore('crm', { keyPath: 'id',  autoIncrement: true } );
-    
-            //createindex, nombre y keypath, 3ro los parametros
-            objectStore.createIndex('nombre', 'nombre', { unique: false } );
-            objectStore.createIndex('email', 'email', { unique: true } );
-            objectStore.createIndex('telefono', 'telefono', { unique: false } );
-            objectStore.createIndex('empresa', 'empresa', { unique: false } );
-            objectStore.createIndex('id', 'id', { unique: true } );
-    
-            
-            console.log('Database creada y lista');
-        };
-    
+
+    function eliminarRegistro(e){
+        if(e.target.classList.contains('eliminar')){
+            const idEliminar = Number(e.target.dataset.cliente);
+
+            const confirmar = confirm('Deseas eliminar el Estudiante');
+
+            if(confirmar){
+                const transaction = DB.transaction(['crm'], 'readwrite');
+                const objectStore = transaction.objectStore('crm');
+
+                objectStore.delete(idEliminar);
+
+                transaction.oncomplete = function() {
+
+                    e.target.parentElement.parentElement.remove();
+
+                    setTimeout(() => {
+                        alert('Estudiante Eliminado correctamente');
+                    }, 1000);
+
+                }
+
+                transaction.onerror = function() {
+                    console.log('Error al Eliminar el Estudiante');
+                }
+            }
+        }
     }
 
 
-    function obtenerClientes() {
+    function crearDB() { // Creando base de datos
+        const crearDB = window.indexedDB.open('crm', 1);
 
-        let abrirConexion = window.indexedDB.open('crm', 1);
-
-        // si hay un error, lanzarlo
-        abrirConexion.onerror = function() {
-            console.log('Hubo un error');
+        crearDB.onerror = function(){
+            console.log('Error al crear la base de Datos');
         };
-    
-        // si todo esta bien, asignar a database el resultado
+
+        crearDB.onsuccess = function(){
+
+            DB = crearDB.result;
+        };
+
+        crearDB.onupgradeneeded = function(e) {
+            const db = e.target.result;
+
+            const objectStore = db.createObjectStore('crm', { keyPath: 'id', autoIncrement: true});
+
+            objectStore.createIndex('nombres', 'nombre', {unique: false});
+            objectStore.createIndex('apellidos', 'apellidos', {unique: false});
+            objectStore.createIndex('email', 'email', {unique: true});
+            objectStore.createIndex('numeroCUI', 'numeroCUI', {unique: true});
+            objectStore.createIndex('telefono', 'telefono', {unique: false});
+            objectStore.createIndex('encargado', 'encargado', {unique: false});
+            objectStore.createIndex('id', 'id', {unique: true});
+
+            console.log('DB Lista y Creada');
+
+
+        }
+
+    }
+
+    function obtenerEstudiantes() {
+        const abrirConexion = window.indexedDB.open('crm', 1);
+
+        abrirConexion.onerror = function(){
+            console.log('Error en la conexion');
+        }
+
         abrirConexion.onsuccess = function() {
-            // guardamos el resultado
             DB = abrirConexion.result;
 
             const objectStore = DB.transaction('crm').objectStore('crm');
 
-
-            // retorna un objeto request o petición, 
             objectStore.openCursor().onsuccess = function(e) {
-                 // cursor se va a ubicar en el registro indicado para accede ra los datos
-                 const cursor = e.target.result;
+                const cursor = e.target.result;
 
-                //  console.log(e.target);
-     
-                 if(cursor) {
-                    const { nombre, empresa, email, telefono, id } = cursor.value;
-                    
-                    const listadoClientes = document.querySelector('#listado-clientes');
-                    listadoClientes.innerHTML += `
+                if(cursor){
+                    const {nombres, apellidos, email, cui, telefono, encargado, id} = cursor.value;
 
+                    listadoEstudiantes.innerHTML += ` 
                         <tr>
                             <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
-                                <p class="text-sm leading-5 font-medium text-gray-700 text-lg  font-bold"> ${nombre} </p>
+                                <p class="text-sm leading-5 font-medium text-gray-700 text-lg  font-bold"> ${nombres} </p>
+                                <p class="text-sm leading-5 font-medium text-gray-700 text-lg  font-bold"> ${apellidos} </p>
+                                <br>
+                                <p class="text-sm leading-5 font-medium text-gray-500 text-lg  font-bold"> CUI: ${cui} </p>
                                 <p class="text-sm leading-10 text-gray-700"> ${email} </p>
                             </td>
                             <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200 ">
                                 <p class="text-gray-700">${telefono}</p>
                             </td>
                             <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200  leading-5 text-gray-700">    
-                                <p class="text-gray-600">${empresa}</p>
+                                <p class="text-gray-600">${encargado}</p>
                             </td>
                             <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200 text-sm leading-5">
                                 <a href="editar-cliente.html?id=${id}" class="text-teal-600 hover:text-teal-900 mr-5">Editar</a>
-                                <a href="#" data-cliente="${id}" class="text-red-600 hover:text-red-900">Eliminar</a>
+                                <a href="#" data-cliente="${id}" class="text-red-600 hover:text-red-900 eliminar">Eliminar</a>
                             </td>
                         </tr>
                     `;
-        
+
                     cursor.continue();
-                 } else {
-                    //  console.log('llegamos al final...');
-                 }
-             };
+                }else{
+                    console.log('No hay más registros...');
+                }
+            }
 
-
-
-        };
-
+        }
 
     }
-    
+
+
+
+
 
 })();
